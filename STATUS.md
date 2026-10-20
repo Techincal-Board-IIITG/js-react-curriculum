@@ -7,6 +7,7 @@ Legend: [x] done and validated, [ ] to do.
 - [x] Design system (fonts, palette per track, code theme, callouts, tables, diagrams)
 - [x] Parser, builder, TOC, bookmarks, running header and footer
 - [x] Code validator (syntax + execution + output comparison + structure)
+- [x] Browser-page validator: `html page` blocks run in headless Chromium with scripted steps (click, fill, press, check, select, reload, print, eval); console output compared with the output block
 - [x] PDF layout validator
 - [x] Reference-implementation emitter, ZIP packaging, README
 - [x] Curriculum index PDF
@@ -14,7 +15,7 @@ Legend: [x] done and validated, [ ] to do.
 ## Sheets (student / answer key)
 - [x] 01 JavaScript Core Fundamentals / [x] key + reference implementations
 - [x] 02 Arrays, Objects, and Modern JavaScript / [x] key (reference modules for the 5 projects are tested inside the key)
-- [ ] 03 DOM, Events, and Browser Storage / [ ] key
+- [x] 03 DOM, Events, and Browser Storage / [x] key (every example page run in headless Chromium; reference apps emitted as runnable folders)
 - [ ] 04 Asynchronous JavaScript and APIs / [ ] key
 - [ ] 05 React Fundamentals and Components / [ ] key
 - [ ] 06 React State, Events, and Forms / [ ] key

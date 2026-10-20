@@ -24,6 +24,12 @@ def emit(src, out, only_flag="emit", name_attr="file"):
             code = b["code"].split("// --- self-test ---")[0].rstrip() + "\n"
             (out / b["attrs"][name_attr]).write_text(code)
             n += 1
+        elif b["t"] == "code" and "bundle" in b["attrs"] and "file" in b["attrs"]:
+            folder = out / b["attrs"]["bundle"]
+            folder.mkdir(parents=True, exist_ok=True)
+            (folder / b["attrs"]["file"]).write_text(b["code"].rstrip() + "\n")
+            (folder / "package.json").write_text('{"type": "module"}\n')
+            n += 1
     return n
 
 if __name__ == "__main__":

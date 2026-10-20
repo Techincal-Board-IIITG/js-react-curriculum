@@ -32,17 +32,22 @@ def main():
     # student sheets, in order; the index first
     for idx in sorted((ROOT / "content/index").iterdir()):
         build_pdf(idx, STUDENT / "00-curriculum-index.pdf")
-    for sheet in sorted(p for p in (ROOT / "content/student").iterdir() if p.is_dir()):
+    for sheet in sorted(p for p in (ROOT / "content/student").iterdir()
+                        if p.is_dir() and not (p / ".wip").exists()):
         out = STUDENT / f"{sheet.name}.pdf"
         print("student   ", out.name, build_pdf(sheet, out), "pages")
     # instructor keys + reference implementations
-    for key in sorted(p for p in (ROOT / "content/instructor").iterdir() if p.is_dir()):
+    for key in sorted(p for p in (ROOT / "content/instructor").iterdir()
+                      if p.is_dir() and not (p / ".wip").exists()):
         out = INSTRUCTOR / f"answer-key-{key.name}.pdf"
         print("instructor", out.name, build_pdf(key, out), "pages")
         student_src = ROOT / "content/student" / key.name
         subprocess.run([sys.executable, str(ROOT / "validation/emit_reference.py"), str(key),
                         str(INSTRUCTOR / "reference-implementations" / key.name), str(student_src)],
                        check=True)
+        ref = INSTRUCTOR / "reference-implementations" / key.name
+        if ref.exists() and not any(ref.iterdir()):
+            ref.rmdir()
 
     shutil.copy(ROOT / "README.md", INSTRUCTOR / "README.md")
     for name, folder, extra in (("student-materials.zip", STUDENT, []),

@@ -45,12 +45,77 @@ def esbuild_ok(code, loader="jsx"):
     return r.returncode == 0, r.stderr.strip().split("\n")[0:3]
 
 
-def run_node(code):
+def run_node(code, files=None):
     with tempfile.TemporaryDirectory() as d:
+        for name, text in (files or {}).items():
+            if name.endswith((".js", ".mjs")):
+                (Path(d) / name).write_text(text)
+        if files:
+            (Path(d) / "package.json").write_text('{"type": "module"}')
         p = Path(d) / "snippet.mjs"
         p.write_text(code)
         r = subprocess.run(["node", str(p)], capture_output=True, text=True, timeout=15, cwd=d)
     return r.returncode, r.stdout, r.stderr
+
+
+
+_PW = {}
+
+
+def run_page(code, steps="", files=None):
+    """Load an HTML page in headless Chromium, perform scripted steps, return log lines.
+    steps: 'click SEL | fill SEL text | press SEL Key | wait 50 | print SEL | reload'."""
+    from playwright.sync_api import sync_playwright
+    if "browser" not in _PW:
+        _PW["ctx"] = sync_playwright().start()
+        _PW["browser"] = _PW["ctx"].chromium.launch()
+    page = _PW["browser"].new_context().new_page()
+    logs = []
+    page.on("console", lambda m: logs.append(m.text))
+    page.on("pageerror", lambda e: logs.append("PAGEERROR: " + str(e).split("\n")[0]))
+    served = dict(files or {})
+    served["index.html"] = code
+
+    def serve(route):
+        name = route.request.url.split("app.test/", 1)[1].split("?")[0] or "index.html"
+        if name not in served:
+            route.fulfill(status=404, body="not found")
+            return
+        kind = "text/html" if name.endswith(".html") else (
+            "text/css" if name.endswith(".css") else "text/javascript")
+        route.fulfill(body=served[name], content_type=kind)
+
+    page.route("http://app.test/**", serve)
+    page.goto("http://app.test/index.html")
+    page.wait_for_timeout(60)
+    for raw in [x.strip() for x in steps.split("|") if x.strip()]:
+        cmd, _, rest = raw.partition(" ")
+        if cmd == "click":
+            page.click(rest)
+        elif cmd == "fill":
+            sel, _, text = rest.partition(" ")
+            page.fill(sel, text)
+        elif cmd == "press":
+            sel, _, key = rest.partition(" ")
+            page.press(sel, key)
+        elif cmd == "check":
+            page.check(rest)
+        elif cmd == "select":
+            sel, _, val = rest.partition(" ")
+            page.select_option(sel, val)
+        elif cmd == "wait":
+            page.wait_for_timeout(int(rest))
+        elif cmd == "print":
+            logs.append(page.inner_text(rest).replace("\n", " / "))
+        elif cmd == "reload":
+            page.reload()
+        elif cmd == "eval":
+            logs.append(str(page.evaluate(rest)))
+        else:
+            raise ValueError(f"unknown step {raw!r}")
+        page.wait_for_timeout(40)
+    page.context.close()
+    return logs
 
 
 def norm(s):
@@ -73,6 +138,11 @@ def check_dir(path):
             yield bs, i, b
             if b["t"] == "container":
                 yield from sequence(b["children"])
+
+    bundles = {}
+    for _bs, _i, _b in sequence(flat):
+        if _b["t"] == "code" and "bundle" in _b["attrs"] and "file" in _b["attrs"]:
+            bundles.setdefault(_b["attrs"]["bundle"], {})[_b["attrs"]["file"]] = _b["code"]
 
     for bs, i, b in sequence(flat):
         if b["t"] != "code" or b["lang"] == "diagram":
@@ -103,7 +173,7 @@ def check_dir(path):
                 continue
             if "run" in flags:
                 stats["run"] += 1
-                rc, out, err = run_node(code)
+                rc, out, err = run_node(code, bundles.get(b["attrs"].get("bundle")))
                 nxt = bs[i + 1] if i + 1 < len(bs) else None
                 if "throws" in flags:
                     if rc == 0:
@@ -120,6 +190,25 @@ def check_dir(path):
                         errors.append(f"{where}: OUTPUT MISMATCH\n--- expected\n{norm(nxt['code'])}\n--- actual\n{norm(out)}")
                 else:
                     warns.append(f"{where}: `run` block has no following output block")
+        elif lang == "html" and "page" in flags:
+            stats["run"] += 1
+            try:
+                logs = run_page(code, b["attrs"].get("steps", ""),
+                                bundles.get(b["attrs"].get("bundle"), {}))
+            except Exception as e:  # noqa: BLE001
+                errors.append(f"{where}: page run failed: {str(e).splitlines()[0]}")
+                continue
+            nxt = bs[i + 1] if i + 1 < len(bs) else None
+            if "throws" in flags:
+                if not any(l.startswith("PAGEERROR") for l in logs):
+                    errors.append(f"{where}: expected a page error but none occurred")
+            elif any(l.startswith("PAGEERROR") for l in logs):
+                errors.append(f"{where}: unexpected page error: {[l for l in logs if l.startswith('PAGEERROR')][0]}")
+            if nxt and nxt["t"] == "code" and nxt["lang"] == "output" and "throws" not in flags:
+                if norm("\n".join(logs)) != norm(nxt["code"]):
+                    errors.append(f"{where}: PAGE OUTPUT MISMATCH\n--- expected\n{norm(nxt['code'])}\n--- actual\n{norm(chr(10).join(logs))}")
+            elif "throws" not in flags:
+                warns.append(f"{where}: `page` block has no following output block")
         elif lang == "json":
             try:
                 json.loads(code)
@@ -147,7 +236,8 @@ def main():
     dirs = [Path(a) for a in sys.argv[1:]]
     if not dirs:
         for sub in ("student", "instructor"):
-            dirs += sorted(p for p in (ROOT / "content" / sub).iterdir() if p.is_dir())
+            dirs += sorted(p for p in (ROOT / "content" / sub).iterdir()
+                           if p.is_dir() and not (p / ".wip").exists() and not p.name.startswith("_"))
     bad = 0
     for d in dirs:
         errs, warns, st = check_dir(d)
