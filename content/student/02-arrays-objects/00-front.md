@@ -377,7 +377,7 @@ false
 Pune CS
 ```
 
-**Line by line.** Line 9 shows both access styles. Lines 11 and 12: with a **variable** key you must use brackets (`student.key` would look for a property literally named `"key"`). Line 14 adds a property, line 15 deletes one. Line 17: `"age" in student` is `false` after the delete. Line 18: `Object.keys()` returns an array of the keys, in the order they were created (deleting `age` leaves `name`, `courses`, `address`, then the new `email`). Line 19 shows chained access into nested data: the object's `address` property is itself an object, and `courses` is an array.
+**Line by line.** Line 8 shows both access styles. Lines 10 and 11: with a **variable** key you must use brackets (`student.key` would look for a property literally named `"key"`). Line 13 adds a property, line 14 deletes one. Line 16: `"age" in student` is `false` after the delete. Line 17: `Object.keys()` returns an array of the keys, in the order they were created (deleting `age` leaves `name`, `courses`, `address`, then the new `email`). Line 18 shows chained access into nested data: the object's `address` property is itself an object, and `courses` is an array.
 
 ## Function deep dive: `Object.keys()`, `Object.values()`, `Object.entries()`
 

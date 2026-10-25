@@ -9,6 +9,7 @@ Legend: [x] done and validated, [ ] to do.
 - [x] Code validator (syntax + execution + output comparison + structure)
 - [x] Browser-page validator: `html page` blocks run in headless Chromium with scripted steps (click, fill, press, check, select, reload, print, eval); console output compared with the output block
 - [x] PDF layout validator
+- [x] Line-reference checker (validation/check_line_refs.py): flags prose 'Line N' references that point at blank lines or at code that does not match the sentence
 - [x] Reference-implementation emitter, ZIP packaging, README
 - [x] Curriculum index PDF
 
@@ -16,7 +17,7 @@ Legend: [x] done and validated, [ ] to do.
 - [x] 01 JavaScript Core Fundamentals / [x] key + reference implementations
 - [x] 02 Arrays, Objects, and Modern JavaScript / [x] key (reference modules for the 5 projects are tested inside the key)
 - [x] 03 DOM, Events, and Browser Storage / [x] key (every example page run in headless Chromium; reference apps emitted as runnable folders)
-- [ ] 04 Asynchronous JavaScript and APIs / [ ] key
+- [x] 04 Asynchronous JavaScript and APIs / [x] key (all fetch examples run against the sheet's own mock-server.mjs; reference projects emitted as runnable folders with the shared toolkit)
 - [ ] 05 React Fundamentals and Components / [ ] key
 - [ ] 06 React State, Events, and Forms / [ ] key
 - [ ] 07 React Effects and API Integration / [ ] key

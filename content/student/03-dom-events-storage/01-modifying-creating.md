@@ -69,12 +69,12 @@ typed x
 
 **Line by line.**
 
-- Lines 9 to 12: assigning `textContent` treats the text literally, so the angle brackets are *escaped* when you read the markup back with `innerHTML` (`&lt;b&gt;`). Assigning the same string to `innerHTML` creates a real `<b>` element: `textContent` now reads `New title` and the heading has one child element.
-- Lines 14 to 16: `setAttribute(name, value)` and `getAttribute(name)` work with the attribute exactly as written (`/b`), while the **property** `link.href` is the fully resolved address, so we test it with `endsWith`.
-- Lines 18 to 20: the `classList` object has `add`, `remove`, `toggle` (add if absent, remove if present) and `contains`. After adding `active` and toggling `card` off, the class attribute is just `active`.
-- Lines 22 and 23: the `style` property holds **inline** styles. CSS property names become camelCase (`background-color` becomes `backgroundColor`). Reading the `style` attribute shows the text the browser wrote.
-- Lines 25 and 26: attributes beginning with `data-` are exposed through `dataset`, with dashes converted to camelCase: `data-user-id` is `dataset.userId`. Values are always strings.
-- Lines 28 to 30: assigning `inp.value` changes what the user sees and what a form would submit, but the *attribute* still says `x`. Use the property for current state.
+- Lines 10 to 13: assigning `textContent` treats the text literally, so the angle brackets are *escaped* when you read the markup back with `innerHTML` (`&lt;b&gt;`). Assigning the same string to `innerHTML` creates a real `<b>` element: `textContent` now reads `New title` and the heading has one child element.
+- Lines 15 to 17: `setAttribute(name, value)` and `getAttribute(name)` work with the attribute exactly as written (`/b`), while the **property** `link.href` is the fully resolved address, so we test it with `endsWith`.
+- Lines 19 to 22: the `classList` object has `add`, `remove`, `toggle` (add if absent, remove if present) and `contains`. After adding `active` and toggling `card` off, the class attribute is just `active`.
+- Lines 24 and 25: the `style` property holds **inline** styles. CSS property names become camelCase (`background-color` becomes `backgroundColor`). Reading the `style` attribute shows the text the browser wrote.
+- Lines 27 and 28: attributes beginning with `data-` are exposed through `dataset`, with dashes converted to camelCase: `data-user-id` is `dataset.userId`. Values are always strings.
+- Lines 30 to 32: assigning `inp.value` changes what the user sees and what a form would submit, but the *attribute* still says `x`. Use the property for current state.
 
 ::: concept Prefer classes over inline styles
 Change appearance by adding or removing a CSS **class** (`element.classList.toggle("done")`) and keep the actual colours and sizes in your stylesheet. It keeps style in one place, is easier to change, and supports hover states, media queries and animations that inline styles cannot.
@@ -308,7 +308,7 @@ A page that reacts to people usually has to add things the HTML file did not con
 WriteTest
 ```
 
-**Line by line.** `renderTodos` is the key pattern: it takes **data** (an array) and makes the page match it. Line 14 clears the list first so that calling it again does not duplicate items. Lines 15 to 22 create one `<li>` per todo: `textContent` for the text (safe), `dataset.id` to remember which todo it belongs to, a CSS class for completed items. Line 21 inserts it. After the first call the list has three items and the first has the class `done`. Line 28 removes the second `<li>` directly from the page (the `todos` array is untouched, which is why the data and the page can drift apart). Line 31 re-renders from only the unfinished todos (`Write` and `Test`). Reading `textContent` of the list joins the text of the two items with no separator, so it prints `WriteTest`.
+**Line by line.** `renderTodos` is the key pattern: it takes **data** (an array) and makes the page match it. Line 15 clears the list first so that calling it again does not duplicate items. Lines 17 to 22 create one `<li>` per todo: `textContent` for the text (safe), `dataset.id` to remember which todo it belongs to, a CSS class for completed items. Line 23 inserts it. After the first call (line 27) the list has three items and the first has the class `done`. Line 31 removes the second `<li>` directly from the page (the `todos` array is untouched, which is why the data and the page can drift apart). Line 34 re-renders from only the unfinished todos (`Write` and `Test`). Reading `textContent` of the list joins the text of the two items with no separator, so it prints `WriteTest`.
 
 | Step | Operation | List now shows | `todos` array |
 |---|---|---|---|

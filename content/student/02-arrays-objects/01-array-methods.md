@@ -281,7 +281,7 @@ console.log(priciest);
 900
 ```
 
-The initial value on line 11 is an empty object `{}`. For each product, line 8 reads the current count for its category (`undefined` the first time, so `|| 0` supplies zero), adds one, and stores it. Line 13 shows a maximum: the accumulator holds the biggest price seen so far.
+The initial value on line 11 is an empty object `{}`. For each product, line 9 reads the current count for its category (`undefined` the first time, so `|| 0` supplies zero), adds one, and stores it. Line 13 shows a maximum: the accumulator holds the biggest price seen so far.
 
 ## Function deep dive: `sort()`
 
@@ -323,7 +323,7 @@ Pen, Book, Bottle, Bag
 Pen, Book, Bag, Bottle
 ```
 
-**Explanation.** Line 1 shows the trap: as strings, `"10"` sorts before `"9"` (the character `"1"` comes before `"9"`), giving `[1, 10, 9]`. Lines 2 and 3 use a numeric comparator. For `[10, 9, 1]` and `(a, b) => a - b`, comparing `10` and `9` gives `1` (positive: `10` goes after `9`), so ascending order results. Lines 5 and 6 sort text: the default sort places uppercase letters before lowercase (by character code), so `"Cherry"` comes first; `localeCompare` follows dictionary order. Line 13 copies the array first with spread, so line 15 shows the original order unchanged: **`sort` mutates, so copy first when you need the original** (a `toSorted()` method that returns a new array also exists in current browsers and Node.js 20 and later).
+**Explanation.** Line 1 shows the trap: as strings, `"10"` sorts before `"9"` (the character `"1"` comes before `"9"`), giving `[1, 10, 9]`. Lines 2 and 3 use a numeric comparator. For `[10, 9, 1]` and `(a, b) => a - b`, comparing `10` and `9` gives `1` (positive: `10` goes after `9`), so ascending order results. Lines 6 and 7 sort text: the default sort places uppercase letters before lowercase (by character code), so `"Cherry"` comes first; `localeCompare` follows dictionary order. Line 15 copies the array first with spread, so line 17 shows the original order unchanged: **`sort` mutates, so copy first when you need the original** (a `toSorted()` method that returns a new array also exists in current browsers and Node.js 20 and later).
 
 ## Chaining methods into pipelines
 

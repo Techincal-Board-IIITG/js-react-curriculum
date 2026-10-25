@@ -353,7 +353,7 @@ inner bubble
 outer bubble
 ```
 
-**Reading the order.** The click starts at the top and **captures** downward, so the capture listener on `outer` runs first. At the **target** the button's own listener runs. Then the event **bubbles** upward: `inner`, then `outer`. The registration order in the source (lines 13 to 16) does not matter between phases; it only decides the order among listeners on the *same* element in the *same* phase.
+**Reading the order.** The click starts at the top and **captures** downward, so the capture listener on `outer` runs first. At the **target** the button's own listener runs. Then the event **bubbles** upward: `inner`, then `outer`. The registration order in the source (lines 14 to 17) does not matter between phases; it only decides the order among listeners on the *same* element in the *same* phase.
 
 **`event.stopPropagation()`** stops the event from going any further along the path. Use it rarely: it hides events from every other listener above, including ones you or a library added for good reasons (analytics, closing menus).
 

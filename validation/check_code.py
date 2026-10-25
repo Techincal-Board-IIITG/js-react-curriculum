@@ -62,7 +62,7 @@ def run_node(code, files=None):
 _PW = {}
 
 
-def run_page(code, steps="", files=None):
+def run_page(code, steps="", files=None, ignore=""):
     """Load an HTML page in headless Chromium, perform scripted steps, return log lines.
     steps: 'click SEL | fill SEL text | press SEL Key | wait 50 | print SEL | reload'."""
     from playwright.sync_api import sync_playwright
@@ -73,20 +73,34 @@ def run_page(code, steps="", files=None):
     logs = []
     page.on("console", lambda m: logs.append(m.text))
     page.on("pageerror", lambda e: logs.append("PAGEERROR: " + str(e).split("\n")[0]))
+    import http.server
+    import threading
     served = dict(files or {})
     served["index.html"] = code
 
-    def serve(route):
-        name = route.request.url.split("app.test/", 1)[1].split("?")[0] or "index.html"
-        if name not in served:
-            route.fulfill(status=404, body="not found")
-            return
-        kind = "text/html" if name.endswith(".html") else (
-            "text/css" if name.endswith(".css") else "text/javascript")
-        route.fulfill(body=served[name], content_type=kind)
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            name = self.path.split("?")[0].lstrip("/") or "index.html"
+            if name not in served:
+                self.send_response(404)
+                self.end_headers()
+                return
+            kind = ("text/html" if name.endswith(".html") else
+                    "text/css" if name.endswith(".css") else "text/javascript")
+            data = served[name].encode()
+            self.send_response(200)
+            self.send_header("Content-Type", kind + "; charset=utf-8")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
 
-    page.route("http://app.test/**", serve)
-    page.goto("http://app.test/index.html")
+        def log_message(self, *args):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    origin = f"http://127.0.0.1:{server.server_address[1]}"
+    page.goto(origin + "/index.html")
     page.wait_for_timeout(60)
     for raw in [x.strip() for x in steps.split("|") if x.strip()]:
         cmd, _, rest = raw.partition(" ")
@@ -115,7 +129,43 @@ def run_page(code, steps="", files=None):
             raise ValueError(f"unknown step {raw!r}")
         page.wait_for_timeout(40)
     page.context.close()
-    return logs
+    server.shutdown()
+    drop = [x for x in ignore.split(";") if x]
+    return [l for l in logs if not any(x in l for x in drop)]
+
+
+_MOCK = {}
+
+
+def ensure_mock(source):
+    """Start the sheet's own mock-server.mjs once (port 3001) and reset it before each use."""
+    import atexit, socket, time, urllib.request
+    if source is None:
+        raise RuntimeError("block uses `mock` but the sheet has no mock-server.mjs block")
+    if "proc" not in _MOCK:
+        d = tempfile.mkdtemp()
+        path = Path(d) / "mock-server.mjs"
+        path.write_text(source)
+        env = dict(__import__("os").environ, PORT="3001")
+        _MOCK["proc"] = subprocess.Popen(["node", str(path)], env=env,
+                                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        atexit.register(_MOCK["proc"].kill)
+        for _ in range(50):
+            try:
+                socket.create_connection(("localhost", 3001), timeout=0.2).close()
+                break
+            except OSError:
+                time.sleep(0.1)
+    urllib.request.urlopen("http://localhost:3001/__reset", timeout=3).read()
+
+
+def merged_bundle(bundles, name):
+    """bundle="p1,net" merges the files of several bundles (first one wins on clashes)."""
+    merged = {}
+    for part in (name or "").split(","):
+        for k, v in bundles.get(part.strip(), {}).items():
+            merged.setdefault(k, v)
+    return merged
 
 
 def norm(s):
@@ -142,7 +192,24 @@ def check_dir(path):
     bundles = {}
     for _bs, _i, _b in sequence(flat):
         if _b["t"] == "code" and "bundle" in _b["attrs"] and "file" in _b["attrs"]:
-            bundles.setdefault(_b["attrs"]["bundle"], {})[_b["attrs"]["file"]] = _b["code"]
+            for _name in _b["attrs"]["bundle"].split(","):
+                bundles.setdefault(_name.strip(), {})[_b["attrs"]["file"]] = _b["code"]
+
+    mock_src = next((_b["code"] for _bs, _i, _b in sequence(flat)
+                     if _b["t"] == "code" and _b["attrs"].get("file") == "mock-server.mjs"), None)
+    sib = ROOT / "content" / "student" / Path(path).name
+    if meta.get("kind") == "instructor" and sib.exists():
+        # keys share the mock server and bundles (http.js, ...) defined in the student sheet
+        _, st_text = load_source(sib)
+        _, st_body = parse_front_matter(st_text)
+        for _bs, _i, _b in sequence(parse_blocks(st_body)):
+            if _b["t"] != "code":
+                continue
+            if "bundle" in _b["attrs"] and "file" in _b["attrs"]:
+                for _name in _b["attrs"]["bundle"].split(","):
+                    bundles.setdefault(_name.strip(), {}).setdefault(_b["attrs"]["file"], _b["code"])
+            if mock_src is None and _b["attrs"].get("file") == "mock-server.mjs":
+                mock_src = _b["code"]
 
     for bs, i, b in sequence(flat):
         if b["t"] != "code" or b["lang"] == "diagram":
@@ -173,7 +240,9 @@ def check_dir(path):
                 continue
             if "run" in flags:
                 stats["run"] += 1
-                rc, out, err = run_node(code, bundles.get(b["attrs"].get("bundle")))
+                if "mock" in flags:
+                    ensure_mock(mock_src)
+                rc, out, err = run_node(code, merged_bundle(bundles, b["attrs"].get("bundle")))
                 nxt = bs[i + 1] if i + 1 < len(bs) else None
                 if "throws" in flags:
                     if rc == 0:
@@ -193,8 +262,11 @@ def check_dir(path):
         elif lang == "html" and "page" in flags:
             stats["run"] += 1
             try:
+                if "mock" in flags:
+                    ensure_mock(mock_src)
                 logs = run_page(code, b["attrs"].get("steps", ""),
-                                bundles.get(b["attrs"].get("bundle"), {}))
+                                merged_bundle(bundles, b["attrs"].get("bundle")),
+                                b["attrs"].get("ignore", ""))
             except Exception as e:  # noqa: BLE001
                 errors.append(f"{where}: page run failed: {str(e).splitlines()[0]}")
                 continue

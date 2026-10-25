@@ -80,7 +80,7 @@ true false
 Asha Meera Pune light
 ```
 
-**Explanation.** `added`, `removed` and `toggled` are all new arrays; `todos` still has its two original items (line 9 prints `2 3 1`). In `toggled`, only the item with `id` 2 is *replaced* by a copy with `done` flipped; line 10 shows the new copy has `true` while the original still has `false`. Line 11 is the subtle part: the **unchanged** item is the very same object (`toggled[0] === todos[0]` is `true`) because `map` returned `t` itself, while the changed item is a new object (`false`). This sharing is safe because nobody mutates anything. Lines 13 to 15 update a nested field: you must copy **every level on the path** to the change (`state`, then `state.user`); everything else is reused.
+**Explanation.** `added`, `removed` and `toggled` are all new arrays; `todos` still has its two original items (line 10 prints `2 3 1`). In `toggled`, only the item with `id` 2 is *replaced* by a copy with `done` flipped; line 11 shows the new copy has `true` while the original still has `false`. Line 12 is the subtle part: the **unchanged** item is the very same object (`toggled[0] === todos[0]` is `true`) because `map` returned `t` itself, while the changed item is a new object (`false`). This sharing is safe because nobody mutates anything. Lines 14 to 16 update a nested field: you must copy **every level on the path** to the change (`state`, then `state.user`); everything else is reused.
 
 ## Optional deep dive: `Object.freeze`
 
